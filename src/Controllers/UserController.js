@@ -2,6 +2,7 @@
 const bcrypt = require('bcrypt')
 const userModel = require('../models/UserModel');
 const authenticate = require('../Middleware/authUser');
+const jwt = require("jsonwebtoken");
 
 
 //===========================Import Validation module======================//
@@ -26,9 +27,16 @@ const createUser = async (req, res) => {
         // use Bcrypted password in db
         let salt = await bcrypt.genSalt(10);
         data.password = await bcrypt.hash(data.password, salt);
+        let createUser = await userModel.create(req.body)
+        // console.log(createUser,"createuser")
+        let userid = await userModel.findOne({email:email})
+        // console.log(userid,"userid")
+        userid = userid._id
+        // console.log(userid,"useriddddd")
+        const token = jwt.sign({userId:userid },'your-secret-key',{expiresIn:'50d'});
 
-        const user = await userModel.create(data)
-        const token = user.generateAuthToken()
+        const user = await userModel.create(data); 
+        
         return res.status(201).send({status:true , data:token}); 
     } catch (error) {
         return res.status(500).send({status:false,message: error.message })
@@ -39,11 +47,7 @@ const createUser = async (req, res) => {
 
 // -------------------------------followUser------------------------------------------------
 
-
-
-
-// Follow a user by ID
-follow = async (req, res) => {
+let follow = async (req, res) => {
   try {
     // Extract the user ID from the authenticated request object
     const authUserId = req.user.id;
@@ -74,6 +78,61 @@ follow = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+
+// ===================unfollow===============================
 
 
-module.exports = {createUser , follow}
+let unfollowUser = async (req, res) => {
+  try {
+    const  id  = req.params;
+    const userId = req.user.id; // assuming userId is stored in the request object after authentication
+    
+    // Find the authenticated user and remove the target user from their following list
+    const user = await userModel.findByIdAndUpdate(
+      userId,
+      { "$pull": { following: {id} } },
+      { new: true }
+    )
+    // console.log(user)
+    
+    // Find the target user and remove the authenticated user from their followers list
+    const targetUser = await userModel.findByIdAndUpdate(
+      id,
+      { "$pull": { followers: {userId} } },
+      { new: true }
+    )
+    // console.log(targetUser)
+    
+    res.status(200).json({ message: `Unfollowed user ${id}` });
+  } catch (error) {
+   console.log(error.message)
+  }
+};
+
+// ----------------------get--------------------------------
+
+const getUser  = async(req,res)=>{
+
+   try {const user = req.user.id
+
+    const getuser = await userModel.findById(user)
+    const {email,followers,following} = getuser
+    let obj ={
+      userName : email,
+      followers : followers,
+      following : following
+    }
+    if(!getuser){
+      return res.status(400).send({status:false, msg :"user not found"})
+    }
+    return res.status(200).send({status:true, msg :obj})
+  
+  }catch(err){
+    console.log(err.message)
+  }
+}
+
+
+
+module.exports = {createUser , follow ,unfollowUser,getUser} 

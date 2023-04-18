@@ -12,11 +12,11 @@ const userSchema = new  mongoose.Schema({
 });
 
 // =================Generate Token for user==================//
-userSchema.methods.generateAuthToken = ()=>{
-  const user = this;
-  const token = jwt.sign({userId: user._id },'your-secret-key',{expiresIn:'50d'});
-  return token ;
-}
+// userSchema.methods.generateAuthToken = ()=>{
+//   const email = this.email;
+//   const token = jwt.sign({email:email },'your-secret-key',{expiresIn:'50d'});
+//   return token ;
+// }
 
 // =================Export Schema============================//
 

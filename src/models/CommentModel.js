@@ -5,8 +5,9 @@ const ObjectId = mongoose.Schema.Types.ObjectId
 
 const commentSchema = new  mongoose.Schema({
     
-      author: { type: ObjectId, ref: 'User', required: true },
-      content: { type: String, required: true },
+      user: { type: ObjectId, ref: 'User', required: true },
+      post:{type:ObjectId,ref:"Post",required:true},
+      comment: { type: String, required: true },
       createdAt: { type: Date, default: Date.now },
       
   });
