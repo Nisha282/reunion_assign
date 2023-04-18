@@ -2,16 +2,18 @@ const express = require('express');
 const route =require("./src/route/route.js");
 const mongoose  = require('mongoose');
 const app= express();
+require('dotenv').config()
+
 
 
 app.use(express.json());
 
 
-mongoose.connect("mongodb+srv://functionup-cohort:Vrvn1212@cluster0.jn5ja3l.mongodb.net/reunion_assignment?retryWrites=true&w=majority", {
-    useNewUrlParser: true
-})
-.then( () => console.log("MongoDb is connected"))
-.catch ( err => console.log(err) )
+mongoose 
+ .connect(process.env.MONGODB_URL) 
+ .then(()=>console.log(`MongodB is Connected`)) 
+ .catch((err)=>console.log(err)) 
+ 
 
 
  app.use('/', route);
