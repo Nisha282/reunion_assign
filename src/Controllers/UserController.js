@@ -47,6 +47,7 @@ const createUser = async (req, res) => {
 
 // -------------------------------followUser------------------------------------------------
 
+
 let follow = async (req, res) => {
   try {
     // Extract the user ID from the authenticated request object
@@ -71,46 +72,50 @@ let follow = async (req, res) => {
     userToFollow.followers.addToSet(authUserId);
     await userToFollow.save();
 
-    res.json({ success: true, message: 'userModel followed successfully.' });
+    res.json({ success: true, message: 'user followed successfully.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Something went wrong.' });
   }
 };
 
-// ---------------------------------------------------------------------------
-
-// ===================unfollow===============================
 
 
-let unfollowUser = async (req, res) => {
+// ===================unfollow==================================
+
+const unfollowUser = async (req, res) => {
   try {
-    const  id  = req.params;
-    const userId = req.user.id; // assuming userId is stored in the request object after authentication
     
-    // Find the authenticated user and remove the target user from their following list
-    const user = await userModel.findByIdAndUpdate(
-      userId,
-      { "$pull": { following: {id} } },
-      { new: true }
-    )
-    // console.log(user)
-    
-    // Find the target user and remove the authenticated user from their followers list
-    const targetUser = await userModel.findByIdAndUpdate(
-      id,
-      { "$pull": { followers: {userId} } },
-      { new: true }
-    )
-    // console.log(targetUser)
-    
-    res.status(200).json({ message: `Unfollowed user ${id}` });
-  } catch (error) {
-   console.log(error.message)
+    const authUserId = req.user.id;
+
+    // Get the user ID to unfollow from the request parameters
+    const userIdToUnfollow = req.params.userId;
+
+    // Find the authenticated user in the database and remove the user to unfollow from their 'following' array
+    const authUser = await userModel.findById(authUserId);
+    if (!authUser) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    authUser.following.pull(userIdToUnfollow);
+    await authUser.save();
+
+    // Find the user to unfollow in the database and remove the authenticated user from their 'followers' array
+    const userToUnfollow = await userModel.findById(userIdToUnfollow);
+    if (!userToUnfollow) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    userToUnfollow.followers.pull(authUserId);
+    await userToUnfollow.save();
+
+    res.json({ success: true, message: 'User unfollowed successfully.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Something went wrong.' });
   }
 };
 
-// ----------------------get--------------------------------
+
+// ----------------------get------------------------------------
 
 const getUser  = async(req,res)=>{
 
@@ -132,7 +137,5 @@ const getUser  = async(req,res)=>{
     console.log(err.message)
   }
 }
-
-
 
 module.exports = {createUser , follow ,unfollowUser,getUser} 

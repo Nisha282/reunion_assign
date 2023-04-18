@@ -29,6 +29,11 @@ router.post("/api/unlike/:postId", authenticate, postController.unlike)
 router.post("/api/comment/:postId",authenticate, postController.comment )
 
 
+router.get("/api/posts/:postId" , postController.getPostDetails)
+
+router.get("/api/all_posts" , authenticate, postController.getPostAllDetails)
+
+
 
 
 

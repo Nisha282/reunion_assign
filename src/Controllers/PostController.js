@@ -12,8 +12,20 @@ const createPost = async function (req, res) {
      if(title === "undifined" || title==null || typeof(title)!='string') return res.status(404).send("Title is required")
      if(description === "undifined" || description==null) return res.status(404).send("Description is required")
     let postCreated = await PostModel.create(req.body)
+    // console.log(postCreated)
+    
     let getPost = await PostModel.findOne({title:title}).select({likes:0, __v:0})
-    return res.status(200).send({status:false,msg:getPost}) 
+    // console.log(getPost,"hello")
+    const authUser = await UserModel.findById(user);
+        // console.log(authUser)
+        if (!authUser) {
+          return res.status(404).json({ success: false, message: 'post  not found.' });
+        }
+        authUser.post.addToSet(postCreated);
+        await authUser.save();
+
+
+    return res.status(200).send({status:true,msg:getPost}) 
     }
 catch (err) {
          res.status(500).send({status: false, msg: "Error", error: err.message})}
@@ -32,11 +44,10 @@ const deletePost = async (req,res)=>{
         const postId = req.param.id
 
         const deletePost = await PostModel.findByIdAndDelete(postId)
-
-        return res.status(200).send({status:true , msg :"delete ho gye bhai"})
+    return res.status(200).send({status:true , msg :"user successfully deleted"})
 
     }catch(err){
-        return res.status(500).send({status:true , msg :"kuch to error hai nisha"})
+        return res.status(500).send({status:true , msg :"err.message"})
     }
 }
 
@@ -44,16 +55,9 @@ const deletePost = async (req,res)=>{
 
 const like = async (req,res) =>{
     try {
-        // Extract the user ID from the authenticated request object
-        const authUserId = req.user.id;
-      
-        const postToLike = req.params.postId
         
-    
-        // Get the user ID to follow from the request parameters
-        // const userIdTolike = req.params.userId;
-    
-        // Find the authenticated user in the database and add the user to follow to their 'following' array
+        const authUserId = req.user.id;
+        const postToLike = req.params.postId;
         const authUser = await PostModel.findById(postToLike);
         console.log(authUser)
         if (!authUser) {
@@ -71,39 +75,36 @@ const like = async (req,res) =>{
 
 
 // ------------------ Unlike api---------------------
-    const unlike = async (req,res) =>{
+ const unlike = async (req, res) => {
         try {
-            const  id  = req.params;
-            const userId = req.user.id; // assuming userId is stored in the request object after authentication
-            
-            // Find the authenticated user and remove the target user from their following list
-            const user = await PostModel.findByIdAndUpdate(
-              userId,
-              { "$pull": { following: {id} } },
-              { new: true }
-            )
-            // console.log(user)
-            
-            // Find the target user and remove the authenticated user from their followers list
-            const targetUser = await PostModel.findByIdAndUpdate(
-              id,
-              { "$pull": { followers: {userId} } },
-              { new: true }
-            )
-            // console.log(targetUser)
-            
-            res.status(200).json({ message: `Unfollowed user ${id}` });
-          } catch (error) {
-            res.status(500).json({ success: false, message: 'Something went wrong.' });
+          // Extract the user ID from the authenticated request object
+          const authUserId = req.user.id;
+      
+          const postToUnlike = req.params.postId;
+      
+          // Find the post to unlike in the database
+          const post = await PostModel.findById(postToUnlike);
+      
+          if (!post) {
+            return res.status(404).json({ success: false, message: 'Post not found.' });
           }
-        };
+      
+          // Remove the authenticated user from the post's 'likes' array
+          post.likes.pull(authUserId);
+          await post.save();
+      
+          res.json({ success: true, message: 'Post unliked successfully.' });
+        } catch (err) {
+          console.log(err);
+          res.status(500).json({ success: false, message: 'Something went wrong.' });
+        }
+      };
+      
         
     // ---------------get--------------------------------
         
-        const getUser  = async(req,res)=>{
-        
-           try {const user = req.user.id
-        
+ const getUser  = async(req,res)=>{
+        try {const user = req.user.id
             const getuser = await userModel.findById(user)
             const {email,followers,following} = getuser
             let obj ={
@@ -124,16 +125,26 @@ const like = async (req,res) =>{
  // -------------Comment Api----------------------
     const comment = async (req,res)=>{
         try{
-
-            const user = req.user.id
-            const post = req.params.postId
-
+           const authUserId = req.user.id;
+            let post
+            const posttocomment =  post =req.params.postId
+            let user = authUserId;
             let {comment }= req.body
             let obj = {user,post,comment}
             let data  = await CommentModel.create(obj)
             let getCommentId  = await CommentModel.findOne(data).select({_id:1})
 
-            return res.status(201).send({status:true,msg:getCommentId })
+        //   console.log(getCommentId)
+            const authUser = await PostModel.findById(posttocomment);
+            console.log(authUser)
+            if (!authUser) {
+              return res.status(404).json({ success: false, message: 'post  not found.' });
+            }
+            authUser.comment.addToSet(getCommentId);
+            await authUser.save();
+        
+        
+            res.json({ success: true, message: 'comment  successfully.' });
 
         }catch(err){
             console.error(err.message);
@@ -141,15 +152,61 @@ const like = async (req,res) =>{
 
         }
     }
+ // ---------------getdetails api--------------------------------
 
-    // ---------------get api--------------------------------
+
+const getPostDetails  = async (req,res)=>{
+   try {
+    const  post = req.params.postId
+    let getPost = await PostModel.findById(post).populate("comment")
+    if(!getPost){
+        return res.status(404).send({status:false,msg :"post not found"})
+    }
+
+    return res.status(200).send({status:true,msg:getPost})
 
 
-    //------------------ get api for all ---------------------
+   }catch(err){
+    console.log(err.message)
+   }
+}
 
+//------------------ get api for all ---------------------
 
 
     
+const getPostAllDetails = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await UserModel.findById(userId).populate('post');
+      const posts = user.post;
+  
+      const postDetails = await Promise.all(posts.map(async (post) => {
+        const populatedPost = await PostModel.findById(post._id)
+          .populate('likes')
+          .populate({
+            path: 'comment',
+            populate: { path: 'user', model: 'User' },
+          });
+  
+        return {
+          id: populatedPost._id,
+          title: populatedPost.title,
+          desc: populatedPost.description,
+          created_at: populatedPost.createdAt,
+          comments: populatedPost.comment,
+          
+          likes: populatedPost.likes.length,
+        };
+      }));
+  
+      return res.status(200).send({ status: true, msg: postDetails });
+    } catch (err) {
+      console.log(err.message);
+      return res.status(500).send({ status: false, msg: 'Server error' });
+    }
+  };
+  
+ 
 
-
-module.exports={createPost ,deletePost , like  , unlike ,getUser, comment}
+module.exports={createPost ,deletePost , like  , unlike ,getUser, comment , getPostDetails , getPostAllDetails}

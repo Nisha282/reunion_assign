@@ -9,6 +9,7 @@ const userSchema = new  mongoose.Schema({
   password: { type: String, required: true },
   followers: [{ type:ObjectId, ref: "User" }],
   following: [{ type: ObjectId, ref: "User" }],
+  post:[{type :Object}]
 });
 
 // =================Generate Token for user==================//
